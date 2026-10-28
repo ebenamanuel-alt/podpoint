@@ -1,0 +1,31 @@
+name: Build PodPoint
+
+on:
+  push:
+    paths:
+      - "app/**"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compile
+        run: |
+          set -e
+          swiftc --version
+          mkdir -p build/PodPoint.app/Contents/MacOS
+          swiftc -O -swift-version 5 -target arm64-apple-macos14.0 app/PodPoint.swift -o build/PodPoint-arm64
+          swiftc -O -swift-version 5 -target x86_64-apple-macos14.0 app/PodPoint.swift -o build/PodPoint-x86_64
+          lipo -create build/PodPoint-arm64 build/PodPoint-x86_64 -output build/PodPoint.app/Contents/MacOS/PodPoint
+          cp app/Info.plist build/PodPoint.app/Contents/Info.plist
+          codesign --force --deep -s - build/PodPoint.app
+          ditto -c -k --keepParent build/PodPoint.app build/PodPoint.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PodPoint-build
+          path: build/PodPoint.zip
